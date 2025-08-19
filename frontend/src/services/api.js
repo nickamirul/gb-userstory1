@@ -1,8 +1,9 @@
 import axios from 'axios';
+import { config as httpsConfig } from '../config/https.config.js';
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const API_KEY = import.meta.env.VITE_API_KEY;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || httpsConfig.API_BASE_URL;
+const API_KEY = import.meta.env.VITE_API_KEY || httpsConfig.API_KEY;
 
 // Create axios instance with default configuration
 const apiClient = axios.create({

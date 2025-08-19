@@ -1,6 +1,9 @@
 require('dotenv').config();
 
 const express = require('express');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const config = require('./config');
@@ -21,9 +24,13 @@ app.use(cors({
     'http://localhost:3000', 
     'https://localhost:3000',
     'http://localhost:5173',  
+    'https://localhost:5173',
     'http://localhost:5174',
+    'https://localhost:5174',
     'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174'
+    'https://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'https://127.0.0.1:5174'
   ],
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
@@ -51,18 +58,24 @@ app.use((error, req, res, next) => {
   });
 });
 
-// Start the server
+// SSL Certificate configuration
+const sslOptions = {
+  key: fs.readFileSync(path.join(__dirname, '../certs/localhost-key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, '../certs/localhost.pem'))
+};
+
+// Start the HTTPS server
 const PORT = config.port;
 
-app.listen(PORT, () => {
+https.createServer(sslOptions, app).listen(PORT, () => {
   console.log('='.repeat(50));
-  console.log('Math Calculator Backend Server');
+  console.log('Math Calculator Backend Server (HTTPS)');
   console.log('='.repeat(50));
   console.log(`Server running on port: ${PORT}`);
   console.log(`Environment: ${config.nodeEnv}`);
   console.log(`API Key configured: ${config.apiKey ? 'Yes' : 'No'}`);
   console.log('Available endpoints:');
-  console.log(`  POST http://localhost:${PORT}/api/v1/calculate`);
+  console.log(`  POST https://localhost:${PORT}/api/v1/calculate`);
   console.log('='.repeat(50));
 });
 
