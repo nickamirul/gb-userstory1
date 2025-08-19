@@ -64,7 +64,7 @@ export const calculatorAPI = {
         timeout: 3000, // 3 second timeout for health check
       });
       return response.data.status === 'healthy';
-    } catch (error) {
+    } catch {
       return false;
     }
   },
