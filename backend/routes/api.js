@@ -2,13 +2,13 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticateApiKey, validateMathInput } = require('../middleware');
+const { authenticateApiKey, validateMathInput, calculationLimiter } = require('../middleware');
 const MathParser = require('../utils/mathParser');
 
 const mathParser = new MathParser();
 
 // Math calculation endpoint - POST /api/v1/calculate
-router.post('/calculate', authenticateApiKey, validateMathInput, (req, res) => {
+router.post('/calculate', calculationLimiter, authenticateApiKey, validateMathInput, (req, res) => {
   try {
     const { expression } = req.body;
     
