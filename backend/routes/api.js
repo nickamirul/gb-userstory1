@@ -7,6 +7,16 @@ const MathParser = require('../utils/mathParser');
 
 const mathParser = new MathParser();
 
+// Health check endpoint - GET /api/v1/health
+router.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: '1.0.0'
+  });
+});
+
 // Math calculation endpoint - POST /api/v1/calculate
 router.post('/calculate', calculationLimiter, authenticateApiKey, validateMathInput, (req, res) => {
   try {
